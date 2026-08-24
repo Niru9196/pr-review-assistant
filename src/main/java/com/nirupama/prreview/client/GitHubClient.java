@@ -1,5 +1,7 @@
 package com.nirupama.prreview.client;
 
+import com.nirupama.prreview.dto.PullRequestFileDto;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -15,10 +17,10 @@ public class GitHubClient {
         this.gitHubRestClient = gitHubRestClient;
     }
 
-    public List<Map<String, Object>> getPullRequestFiles(String owner, String repo, int prNumber) {
+    public List<PullRequestFileDto> getPullRequestFiles(String owner, String repo, int prNumber) {
         return gitHubRestClient.get()
                 .uri("/repos/{owner}/{repo}/pulls/{prNumber}/files", owner, repo, prNumber)
                 .retrieve()
-                .body(new org.springframework.core.ParameterizedTypeReference<List<Map<String, Object>>>() {});
+                .body(new ParameterizedTypeReference<List<PullRequestFileDto>>() {});
     }
 }
