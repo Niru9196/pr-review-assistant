@@ -1,6 +1,7 @@
 package com.nirupama.prreview.service;
 
 import com.nirupama.prreview.dto.PullRequestFileDto;
+import com.nirupama.prreview.exception.ReviewGenerationException;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 
@@ -17,12 +18,12 @@ public class ReviewService {
     }
 
     public String reviewFile(PullRequestFileDto file) {
-        String prompt = buildPrompt(file);
-
-        return chatClient.prompt()
-                .user(prompt)
-                .call()
-                .content();
+        try {
+            String prompt = buildPrompt(file);
+            return chatClient.prompt().user(prompt).call().content();
+        } catch (Exception ex) {
+            throw new ReviewGenerationException("Failed to review file: " + file.filename(), ex);
+        }
     }
 
     public List<String> reviewFiles(List<PullRequestFileDto> files) {
