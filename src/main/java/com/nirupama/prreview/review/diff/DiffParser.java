@@ -25,14 +25,16 @@ public class DiffParser {
 
         List<ChangedLine> lines = new ArrayList<>();
 
-        int currentLine = 0;
+        int oldLine = 0;
+        int newLine = 0;
 
         for (String line : patch.split("\n")) {
 
             Matcher matcher = HUNK_PATTERN.matcher(line);
 
             if (matcher.matches()) {
-                currentLine = Integer.parseInt(matcher.group(2));
+                oldLine = Integer.parseInt(matcher.group(1));
+                newLine = Integer.parseInt(matcher.group(2));
                 continue;
             }
 
@@ -49,13 +51,14 @@ public class DiffParser {
 
                 lines.add(
                         new ChangedLine(
-                                currentLine,
+                                null,
+                                newLine,
                                 line.substring(1),
                                 LineType.ADDED
                         )
                 );
 
-                currentLine++;
+                newLine++;
                 continue;
             }
 
@@ -63,12 +66,14 @@ public class DiffParser {
 
                 lines.add(
                         new ChangedLine(
-                                currentLine,
+                                oldLine,
+                                null,
                                 line.substring(1),
                                 LineType.REMOVED
                         )
                 );
 
+                oldLine++;
                 continue;
             }
 
@@ -76,13 +81,15 @@ public class DiffParser {
 
                 lines.add(
                         new ChangedLine(
-                                currentLine,
+                                oldLine,
+                                newLine,
                                 line.substring(1),
                                 LineType.CONTEXT
                         )
                 );
 
-                currentLine++;
+                oldLine++;
+                newLine++;
             }
         }
 

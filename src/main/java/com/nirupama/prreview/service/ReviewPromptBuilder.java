@@ -16,8 +16,13 @@ public class ReviewPromptBuilder {
 
         String code = lines.stream()
                 .map(line -> String.format(
-                        "%4d | %-7s | %s",
-                        line.lineNumber(),
+                        "old=%s | new=%s | %-8s | %s",
+                        line.oldLineNumber() == null
+                                ? "-"
+                                : line.oldLineNumber(),
+                        line.newLineNumber() == null
+                                ? "-"
+                                : line.newLineNumber(),
                         line.type(),
                         line.content()
                 ))
@@ -34,11 +39,24 @@ public class ReviewPromptBuilder {
 
                 %s
 
+                Line number semantics:
+                - old = line number in the previous version of the file
+                - new = line number in the current version of the file
+                - ADDED lines have an old line number of "-"
+                - REMOVED lines have a new line number of "-"
+                - CONTEXT lines have both old and new line numbers
+
                 The lines marked ADDED or REMOVED are changes.
                 Lines marked CONTEXT are surrounding code provided to help
                 understand the change.
 
                 Focus primarily on ADDED code.
+
+                For findings on ADDED or CONTEXT code, use the NEW line number
+                when reporting the line.
+
+                For findings specifically about REMOVED code, use the OLD
+                line number.
 
                 Prioritize:
                 - correctness
