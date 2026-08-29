@@ -1,81 +1,78 @@
 package com.nirupama.prreview.service;
 
+import com.nirupama.prreview.review.diff.ChangedLine;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class ReviewPromptBuilder {
 
-    public String build(String filename, String patch) {
+    public String build(
+            String filename,
+            List<ChangedLine> lines
+    ) {
+
+        String code = lines.stream()
+                .map(line -> String.format(
+                        "%4d | %-7s | %s",
+                        line.lineNumber(),
+                        line.type(),
+                        line.content()
+                ))
+                .collect(Collectors.joining("\n"));
+
         return """
-            You are an expert software engineer performing a code review.
+                You are a senior software engineer performing a code review.
 
-            Review the following changed file from a GitHub Pull Request.
+                Review the following changed section of:
 
-            File:
-            %s
+                File: %s
 
-            Changed code:
-            %s
+                Code:
 
-            Analyze the changes and identify only actionable issues.
+                %s
 
-            For each issue provide:
-            - severity
-            - category
-            - file
-            - line
-            - title
-            - description
-            - suggestion
-            - confidence
+                The lines marked ADDED or REMOVED are changes.
+                Lines marked CONTEXT are surrounding code provided to help
+                understand the change.
 
-            Also provide:
-            - summary
-            - overall risk level
+                Focus primarily on ADDED code.
 
-            Rules:
-            - Only report real, actionable issues.
-            - Do not report purely stylistic preferences.
-            - Do not invent files.
-            - Do not invent line numbers.
-            - Confidence must be between 0 and 1.
-            - If there are no issues, return an empty findings list.
-            
-            Return ONLY structured JSON in this format:
-            
-            {
-              "summary": "Short overall review summary",
-              "riskLevel": "LOW",
-              "findings": [
-                {
-                  "severity": "MEDIUM",
-                  "category": "BUG",
-                  "file": "example.java",
-                  "line": 42,
-                  "title": "Short issue title",
-                  "description": "Explain the issue",
-                  "suggestion": "Explain how to fix it",
-                  "confidence": 0.90
-                }
-              ]
-            }
-            
-            Allowed risk levels:
-            LOW, MEDIUM, HIGH, CRITICAL
-            
-            Allowed severities:
-            LOW, MEDIUM, HIGH, CRITICAL
-            
-            Allowed categories:
-            BUG, SECURITY, PERFORMANCE, MAINTAINABILITY, TESTING
-            
-            If there are no issues:
-            
-            {
-              "summary": "No significant issues found.",
-              "riskLevel": "LOW",
-              "findings": []
-            }
-            """.formatted(filename, patch);
+                Prioritize:
+                - correctness
+                - bugs
+                - security
+                - performance
+                - reliability
+                - maintainability
+                - testing
+
+                Do not report:
+                - formatting-only issues
+                - whitespace issues
+                - missing trailing newlines
+                - subjective style preferences
+                - unchanged code unless it directly causes a problem
+                - issues unrelated to the current change
+
+                Only report concrete and actionable problems.
+
+                For every finding provide:
+                - severity
+                - category
+                - file
+                - line
+                - title
+                - description
+                - suggestion
+                - confidence between 0 and 1
+
+                If there are no meaningful issues, return an empty findings list.
+                """.formatted(
+                filename,
+                code
+        );
     }
 }

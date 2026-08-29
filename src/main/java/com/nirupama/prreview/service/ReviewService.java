@@ -5,6 +5,8 @@ import com.nirupama.prreview.dto.PullRequestFileDto;
 import com.nirupama.prreview.dto.PullRequestRequest;
 import com.nirupama.prreview.entity.Review;
 import com.nirupama.prreview.repository.ReviewRepository;
+import com.nirupama.prreview.review.diff.ChangedLine;
+import com.nirupama.prreview.review.diff.DiffParser;
 import com.nirupama.prreview.review.dto.ReviewResponse;
 import org.springframework.stereotype.Service;
 
@@ -18,26 +20,35 @@ public class ReviewService {
     private final GitHubClient gitHubClient;
     private final ReviewMapper reviewMapper;
     private final ReviewRepository reviewRepository;
+    private final FileReviewPolicy fileReviewPolicy;
+    private final DiffParser diffParser;
 
     public ReviewService(
             ReviewPromptBuilder promptBuilder,
             ReviewGenerator reviewGenerator,
             GitHubClient gitHubClient,
             ReviewMapper reviewMapper,
-            ReviewRepository reviewRepository
+            ReviewRepository reviewRepository,
+            FileReviewPolicy fileReviewPolicy,
+            DiffParser diffParser
     ) {
         this.promptBuilder = promptBuilder;
         this.reviewGenerator = reviewGenerator;
         this.gitHubClient = gitHubClient;
         this.reviewMapper = reviewMapper;
         this.reviewRepository = reviewRepository;
+        this.fileReviewPolicy = fileReviewPolicy;
+        this.diffParser = diffParser;
     }
 
-    public ReviewResponse reviewFile(PullRequestFileDto file) {
+    public ReviewResponse reviewFile(
+            PullRequestFileDto file,
+            List<ChangedLine> relevantLines
+    ) {
 
         String prompt = promptBuilder.build(
                 file.filename(),
-                file.patch()
+                relevantLines
         );
 
         return reviewGenerator.generate(prompt);
@@ -55,10 +66,14 @@ public class ReviewService {
                 );
 
         return files.stream()
+                .filter(fileReviewPolicy::shouldReview)
                 .map(file -> {
 
+                    List<ChangedLine> relevantLines =
+                            diffParser.parse(file.patch());
+
                     ReviewResponse response =
-                            reviewFile(file);
+                            reviewFile(file, relevantLines);
 
                     Review review =
                             reviewMapper.toEntity(
