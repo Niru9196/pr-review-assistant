@@ -6,7 +6,6 @@ import com.nirupama.prreview.dto.PullRequestRequest;
 import com.nirupama.prreview.entity.Review;
 import com.nirupama.prreview.repository.ReviewRepository;
 import com.nirupama.prreview.review.dto.ReviewResponse;
-import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -14,21 +13,21 @@ import java.util.List;
 @Service
 public class ReviewService {
 
-    private final ChatClient chatClient;
     private final ReviewPromptBuilder promptBuilder;
+    private final ReviewGenerator reviewGenerator;
     private final GitHubClient gitHubClient;
     private final ReviewMapper reviewMapper;
     private final ReviewRepository reviewRepository;
 
     public ReviewService(
-            ChatClient chatClient,
             ReviewPromptBuilder promptBuilder,
+            ReviewGenerator reviewGenerator,
             GitHubClient gitHubClient,
             ReviewMapper reviewMapper,
             ReviewRepository reviewRepository
     ) {
-        this.chatClient = chatClient;
         this.promptBuilder = promptBuilder;
+        this.reviewGenerator = reviewGenerator;
         this.gitHubClient = gitHubClient;
         this.reviewMapper = reviewMapper;
         this.reviewRepository = reviewRepository;
@@ -41,11 +40,7 @@ public class ReviewService {
                 file.patch()
         );
 
-        return chatClient
-                .prompt()
-                .user(prompt)
-                .call()
-                .entity(ReviewResponse.class);
+        return reviewGenerator.generate(prompt);
     }
 
     public List<Review> reviewPullRequest(
