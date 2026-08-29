@@ -3,6 +3,7 @@ package com.nirupama.prreview.controller;
 import com.nirupama.prreview.entity.Review;
 import com.nirupama.prreview.dto.PullRequestRequest;
 import com.nirupama.prreview.repository.ReviewRepository;
+import com.nirupama.prreview.review.dto.PullRequestReviewResponse;
 import com.nirupama.prreview.service.ReviewService;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,7 +25,7 @@ public class PullRequestController {
     }
 
     @PostMapping
-    public List<Review> reviewPullRequest(
+    public PullRequestReviewResponse reviewPullRequest(
             @RequestBody PullRequestRequest request
     ) {
         return reviewService.reviewPullRequest(request);

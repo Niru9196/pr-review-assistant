@@ -7,6 +7,7 @@ import com.nirupama.prreview.entity.Review;
 import com.nirupama.prreview.repository.ReviewRepository;
 import com.nirupama.prreview.review.diff.ChangedLine;
 import com.nirupama.prreview.review.diff.DiffParser;
+import com.nirupama.prreview.review.dto.PullRequestReviewResponse;
 import com.nirupama.prreview.review.dto.ReviewResponse;
 import org.springframework.stereotype.Service;
 
@@ -54,7 +55,7 @@ public class ReviewService {
         return reviewGenerator.generate(prompt);
     }
 
-    public List<Review> reviewPullRequest(
+    public PullRequestReviewResponse reviewPullRequest(
             PullRequestRequest request
     ) {
 
@@ -65,7 +66,7 @@ public class ReviewService {
                         request.prNumber()
                 );
 
-        return files.stream()
+        List<Review> reviews = files.stream()
                 .filter(fileReviewPolicy::shouldReview)
                 .map(file -> {
 
@@ -87,5 +88,15 @@ public class ReviewService {
                     return reviewRepository.save(review);
                 })
                 .toList();
+
+        List<String> skippedFiles = files.stream()
+                .filter(file -> !fileReviewPolicy.shouldReview(file))
+                .map(PullRequestFileDto::filename)
+                .toList();
+
+        return new PullRequestReviewResponse(
+                reviews,
+                skippedFiles
+        );
     }
 }

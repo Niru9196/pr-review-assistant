@@ -3,6 +3,7 @@ package com.nirupama.prreview.controller;
 import com.nirupama.prreview.dto.PullRequestRequest;
 import com.nirupama.prreview.entity.Review;
 import com.nirupama.prreview.repository.ReviewRepository;
+import com.nirupama.prreview.review.dto.PullRequestReviewResponse;
 import com.nirupama.prreview.review.dto.RiskLevel;
 import com.nirupama.prreview.service.ReviewService;
 import org.junit.jupiter.api.Test;
@@ -71,26 +72,34 @@ class PullRequestControllerTest {
                 RiskLevel.LOW
         );
 
+        PullRequestReviewResponse response =
+                new PullRequestReviewResponse(
+                        List.of(review),
+                        List.of()
+                );
+
         given(reviewService.reviewPullRequest(any(PullRequestRequest.class)))
-                .willReturn(List.of(review));
+                .willReturn(response);
 
         mockMvc.perform(
                         post("/api/reviews")
                                 .contentType(APPLICATION_JSON)
                                 .content("""
-                                    {
-                                        "owner": "spring-projects",
-                                        "repo": "spring-boot",
-                                        "prNumber": 1
-                                    }
-                                    """)
+                                {
+                                    "owner": "spring-projects",
+                                    "repo": "spring-boot",
+                                    "prNumber": 1
+                                }
+                                """)
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].filename")
+                .andExpect(jsonPath("$.reviews[0].filename")
                         .value("AstUtils.java"))
-                .andExpect(jsonPath("$[0].summary")
+                .andExpect(jsonPath("$.reviews[0].summary")
                         .value("Looks good"))
-                .andExpect(jsonPath("$[0].riskLevel")
-                        .value("LOW"));
+                .andExpect(jsonPath("$.reviews[0].riskLevel")
+                        .value("LOW"))
+                .andExpect(jsonPath("$.skippedFiles")
+                        .isEmpty());
     }
 }
