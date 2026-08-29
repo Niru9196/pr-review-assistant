@@ -1,46 +1,81 @@
 package com.nirupama.prreview.service;
 
+import com.nirupama.prreview.client.GitHubClient;
 import com.nirupama.prreview.dto.PullRequestFileDto;
-import com.nirupama.prreview.exception.ReviewGenerationException;
+import com.nirupama.prreview.dto.PullRequestRequest;
+import com.nirupama.prreview.entity.Review;
+import com.nirupama.prreview.repository.ReviewRepository;
+import com.nirupama.prreview.review.dto.ReviewResponse;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class ReviewService {
 
     private final ChatClient chatClient;
+    private final ReviewPromptBuilder promptBuilder;
+    private final GitHubClient gitHubClient;
+    private final ReviewMapper reviewMapper;
+    private final ReviewRepository reviewRepository;
 
-    public ReviewService(ChatClient.Builder chatClientBuilder) {
-        this.chatClient = chatClientBuilder.build();
+    public ReviewService(
+            ChatClient chatClient,
+            ReviewPromptBuilder promptBuilder,
+            GitHubClient gitHubClient,
+            ReviewMapper reviewMapper,
+            ReviewRepository reviewRepository
+    ) {
+        this.chatClient = chatClient;
+        this.promptBuilder = promptBuilder;
+        this.gitHubClient = gitHubClient;
+        this.reviewMapper = reviewMapper;
+        this.reviewRepository = reviewRepository;
     }
 
-    public String reviewFile(PullRequestFileDto file) {
-        try {
-            String prompt = buildPrompt(file);
-            return chatClient.prompt().user(prompt).call().content();
-        } catch (Exception ex) {
-            throw new ReviewGenerationException("Failed to review file: " + file.filename(), ex);
-        }
+    public ReviewResponse reviewFile(PullRequestFileDto file) {
+
+        String prompt = promptBuilder.build(
+                file.filename(),
+                file.patch()
+        );
+
+        return chatClient
+                .prompt()
+                .user(prompt)
+                .call()
+                .entity(ReviewResponse.class);
     }
 
-    public List<String> reviewFiles(List<PullRequestFileDto> files) {
+    public List<Review> reviewPullRequest(
+            PullRequestRequest request
+    ) {
+
+        List<PullRequestFileDto> files =
+                gitHubClient.getPullRequestFiles(
+                        request.owner(),
+                        request.repo(),
+                        request.prNumber()
+                );
+
         return files.stream()
-                .map(this::reviewFile)
-                .collect(Collectors.toList());
-    }
+                .map(file -> {
 
-    private String buildPrompt(PullRequestFileDto file) {
-        return """
-                You are a senior software engineer reviewing a pull request.
-                Review the following code diff and provide concise, actionable feedback.
-                Focus on bugs, code quality, and potential issues. Keep it brief.
+                    ReviewResponse response =
+                            reviewFile(file);
 
-                File: %s
-                Diff:
-                %s
-                """.formatted(file.filename(), file.patch());
+                    Review review =
+                            reviewMapper.toEntity(
+                                    request.owner(),
+                                    request.repo(),
+                                    request.prNumber(),
+                                    file.filename(),
+                                    response
+                            );
+
+                    return reviewRepository.save(review);
+                })
+                .toList();
     }
 }
